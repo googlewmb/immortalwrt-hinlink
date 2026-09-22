@@ -10,6 +10,8 @@ mkdir -p "$LOGS"
 cd "$TREE"
 case "${1:-all}" in
   prepare)
+    # 先注册设备，避免 feeds 刷新配置时丢失自定义目标。
+    python3 "$ROOT/scripts/manage.py" adapt "$TREE"
     bash "$ROOT/diy1.sh" 2>&1 | tee "$LOGS/feeds.log"
     bash "$ROOT/diy2.sh" "$BOARD" 2>&1 | tee "$LOGS/adapt.log"
     make defconfig 2>&1 | tee "$LOGS/defconfig.log"

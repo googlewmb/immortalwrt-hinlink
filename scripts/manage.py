@@ -34,6 +34,29 @@ def feeds(tree):
     require(not existing & new, f'第三方 feed 名称重复：{existing & new}')
     write(path, original.rstrip()+'\n'+start+'\n'+extra+end+'\n')
 
+def install_feeds(tree):
+    # feeds install -a 按源码目录去重；不同目录可导出同名二进制包。
+    # 先只安装官方 feeds，再按当前机型实际请求补齐第三方包及其依赖。
+    path=tree/'feeds.conf'
+    combined=read(path)
+    official=re.sub(r'# BEGIN H6XK THIRD PARTY.*?# END H6XK THIRD PARTY\n?', '', combined, flags=re.S)
+    require(official != combined, '未找到第三方 feeds 边界')
+    try:
+        write(path,official)
+        subprocess.run(['./scripts/feeds','install','-a'],cwd=tree,check=True)
+    finally:
+        write(path,combined)
+    configure(tree,os.getenv('BOARD','h68k'))
+    wanted=[k.removeprefix('CONFIG_PACKAGE_') for k,v in parse_config(read(tree/'.config.requested')).items()
+            if k.startswith('CONFIG_PACKAGE_') and v=='y']
+    # 官方安装生成的元数据含核心和已安装 feed 的实际二进制包名。
+    subprocess.run(['make','-s','prepare-tmpinfo'],cwd=tree,check=True)
+    available=set(re.findall(r'^Package: (\S+)',read(tree/'tmp/.packageinfo'),re.M))
+    missing=sorted(set(wanted)-available)
+    write(tree.parent/'build-logs/third-party-requested.txt','\n'.join(missing)+'\n')
+    if missing:
+        subprocess.run(['./scripts/feeds','install',*missing],cwd=tree,check=True)
+
 def adapt(tree):
     image=tree/'target/linux/rockchip/image/Makefile'
     uboot=tree/'package/boot/uboot-rockchip/Makefile'
@@ -150,6 +173,8 @@ def audit(tree):
                 conflicts.append(f'{name}: {providers[name]} / {source}')
             providers[name]=source
     write(tree.parent/'build-logs/package-conflicts.txt','# 中文说明：实际安装的不同 recipe 同名包冲突。\n'+'\n'.join(conflicts)+'\n')
+    if conflicts:
+        print('\n'.join(conflicts),flush=True)
     require(providers,'软件包元数据格式发生变化，需要更新审计器')
     require(not conflicts,'发现插件重名冲突，停止构建，查看 package-conflicts.txt')
     before=parse_config(read(tree/'.config.requested'))
@@ -157,6 +182,8 @@ def audit(tree):
     changes=[f'{k}: {v} -> {after.get(k,"<不存在>")}' for k,v in before.items() if v!='n' and after.get(k)!=v]
     log=tree.parent/'build-logs'
     write(log/'config-drift.txt','# 中文说明：defconfig 移除或改变的用户选项。\n'+'\n'.join(changes)+'\n')
+    if changes:
+        print('\n'.join(changes),flush=True)
     # 硬性要求始终检查，不能用允许配置漂移选项绕过。
     required=['CONFIG_TARGET_rockchip','CONFIG_TARGET_rockchip_armv8','CONFIG_TARGET_ROOTFS_SQUASHFS',
         'CONFIG_PACKAGE_kmod-mt7916-firmware','CONFIG_PACKAGE_kmod-mt7921e','CONFIG_PACKAGE_kmod-mt7921u',
@@ -167,13 +194,12 @@ def audit(tree):
     require(all(after.get(k)=='y' for k in required),'设备或无线必要配置丢失，停止构建，查看 config-drift.txt')
     require(after.get('CONFIG_TARGET_KERNEL_PARTSIZE')=='64' and after.get('CONFIG_TARGET_ROOTFS_PARTSIZE')=='512','分区大小发生变化')
     if changes:
-        print('\n'.join(changes))
         require(os.getenv('ALLOW_CONFIG_DRIFT','false')=='true','配置有未满足项，停止构建；不要把缺失插件当成已集成。')
     write(log/'effective.config',read(tree/'.config'))
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['feeds','adapt','config','audit'])
+    parser.add_argument('action',choices=['feeds','install_feeds','adapt','config','audit'])
     parser.add_argument('tree',type=Path)
     parser.add_argument('board',nargs='?',default='h68k')
     args=parser.parse_args()
