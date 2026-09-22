@@ -42,6 +42,22 @@ class GuardTests(unittest.TestCase):
         m.feeds(self.tree)
         self.assertEqual(before,m.read(self.tree/'feeds.conf'))
 
+    def test_hardware_and_performance(self):
+        for b in m.BOARDS:
+            m.configure(self.tree,b)
+            c=m.parse_config(m.read(self.tree/'.config'))
+            for name in ('modemmanager','kmod-hwmon-pwmfan','kmod-usb-net-qmi-wwan'):
+                self.assertEqual(c['CONFIG_PACKAGE_'+name],'y' if b=='h69k' else 'n')
+            for name in ('kmod-nft-fullcone','kmod-nft-offload','kmod-tcp-bbr','kmod-sched'):
+                self.assertEqual(c['CONFIG_PACKAGE_'+name],'y')
+            self.assertEqual(c['CONFIG_PACKAGE_kmod-r8126'],'n')
+
+    def test_fullcone_cannot_be_ignored(self):
+        m.configure(self.tree,'h69k')
+        m.write(self.tree/'.config',m.read(self.tree/'.config').replace('CONFIG_PACKAGE_kmod-nft-fullcone=y',''))
+        with patch.dict(os.environ,{'ALLOW_CONFIG_DRIFT':'true'}):
+            with self.assertRaises(SystemExit): m.audit(self.tree)
+
     def test_refuse_conflict_before_writing(self):
         path=self.tree/'target/linux/rockchip/dts/rk3568/rk3568-opc-h66k.dts'
         m.write(path,'用户已有的不同文件')
