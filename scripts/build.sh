@@ -33,6 +33,9 @@ case "${1:-all}" in
     exit 1
     ;;
   compile)
+    # 先实际应用完整内核补丁队列并确认 BBRv3，失败不能跳过。
+    make target/linux/prepare -j1 V=s 2>&1 | tee "$LOGS/kernel-prepare.log"
+    python3 "$ROOT/scripts/bbr3.py" verify "$TREE"
     # 并行失败后单线程复查，保存两份日志，便于定位真实错误。
     if make -j"$JOBS" V=s 2>&1 | tee "$LOGS/compile-parallel.log"; then exit 0; fi
     make -j1 V=s 2>&1 | tee "$LOGS/compile-serial.log"

@@ -26,7 +26,7 @@ for p in target.glob(f'*hinlink_opc-{board}*.manifest'):
     shutil.copy2(p,out/p.name)
 shutil.copy2(tree/'.config',out/f'{board}.config')
 logs=tree.parent/'build-logs'
-for name in ('source-revisions.txt','config-drift.txt','generated-adaptation.patch'):
+for name in ('source-revisions.txt','config-drift.txt','generated-adaptation.patch','bbr3-verification.txt'):
     if (logs/name).exists(): shutil.copy2(logs/name,out/name)
 lines=[]
 for p in sorted(out.iterdir()):

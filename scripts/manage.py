@@ -118,6 +118,15 @@ def configure(tree,board):
         'CONFIG_CCACHE':'y',
     }
     values.update(fixes)
+    # 中文说明：专属硬件片段最后生效，不再只替换目标名称。
+    values.update(parse_config(read(ROOT/'configs/devices'/f'{board}.config')))
+    values.update({
+        'CONFIG_PACKAGE_firewall4':'y', 'CONFIG_PACKAGE_kmod-nft-fullcone':'y',
+        'CONFIG_PACKAGE_kmod-nft-offload':'y', 'CONFIG_PACKAGE_kmod-tcp-bbr':'y',
+        'CONFIG_PACKAGE_kmod-sched':'y', 'CONFIG_PACKAGE_kmod-r8126':'n',
+        'CONFIG_PACKAGE_kmod-r8168':'n', 'CONFIG_PACKAGE_kmod-drm-panfrost':'n',
+        'CONFIG_PACKAGE_kmod-rkgpu-bifrost':'n',
+    })
     for b in BOARDS:
         values[f'CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_hinlink_opc-{b}']='y' if b==board else 'n'
     result='# 中文说明：原配置加上已说明的依赖修正；defconfig 变更会另存报告。\n'
@@ -151,7 +160,9 @@ def audit(tree):
     # 硬性要求始终检查，不能用允许配置漂移选项绕过。
     required=['CONFIG_TARGET_rockchip','CONFIG_TARGET_rockchip_armv8','CONFIG_TARGET_ROOTFS_SQUASHFS',
         'CONFIG_PACKAGE_kmod-mt7916-firmware','CONFIG_PACKAGE_kmod-mt7921e','CONFIG_PACKAGE_kmod-mt7921u',
-        'CONFIG_PACKAGE_kmod-mt7922-firmware','CONFIG_PACKAGE_wpad-openssl']
+        'CONFIG_PACKAGE_kmod-mt7922-firmware','CONFIG_PACKAGE_wpad-openssl',
+        'CONFIG_PACKAGE_firewall4','CONFIG_PACKAGE_kmod-nft-fullcone',
+        'CONFIG_PACKAGE_kmod-nft-offload','CONFIG_PACKAGE_kmod-tcp-bbr','CONFIG_PACKAGE_kmod-sched']
     required += [k for k,v in before.items() if k.startswith('CONFIG_TARGET_DEVICE_') and v=='y']
     require(all(after.get(k)=='y' for k in required),'设备或无线必要配置丢失，停止构建，查看 config-drift.txt')
     require(after.get('CONFIG_TARGET_KERNEL_PARTSIZE')=='64' and after.get('CONFIG_TARGET_ROOTFS_PARTSIZE')=='512','分区大小发生变化')
