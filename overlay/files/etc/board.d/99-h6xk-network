@@ -1,0 +1,12 @@
+#!/bin/sh
+# 中文说明：按 iStoreOS 网口分配设置 LAN/WAN；只作用于三款设备。
+. /lib/functions.sh
+. /lib/functions/uci-defaults.sh
+board_config_update
+case "$(board_name)" in
+  hinlink,opc-h66k) ucidef_set_interfaces_lan_wan 'eth1' 'eth0' ;;
+  hinlink,opc-h68k) ucidef_set_interfaces_lan_wan 'eth1 eth2 eth3' 'eth0' ;;
+  hinlink,opc-h69k) ucidef_set_interfaces_lan_wan 'eth1 eth2' 'eth0' ;;
+esac
+board_config_flush
+exit 0
