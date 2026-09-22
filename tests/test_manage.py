@@ -87,4 +87,29 @@ class GuardTests(unittest.TestCase):
         m.write(self.tree/'tmp/.packageinfo','Source-Makefile: package/official/Makefile\nPackage: test\nSource-Makefile: package/third/Makefile\nPackage: test\n')
         with self.assertRaises(SystemExit): m.audit(self.tree)
 
+    def test_official_first_then_only_missing_packages(self):
+        m.feeds(self.tree)
+        combined=m.read(self.tree/'feeds.conf')
+        calls=[]
+        def run(args,**kwargs):
+            calls.append(args)
+            if args==['./scripts/feeds','install','-a']:
+                self.assertNotIn('src-git oaf ',m.read(self.tree/'feeds.conf'))
+            elif args==['make','-s','prepare-tmpinfo']:
+                m.write(self.tree/'tmp/.packageinfo','Source-Makefile: package/feeds/packages/open-app-filter/Makefile\nPackage: kmod-oaf\nPackage: appfilter\n')
+        with patch.object(m.subprocess,'run',side_effect=run):
+            m.install_feeds(self.tree)
+        self.assertEqual(m.read(self.tree/'feeds.conf'),combined)
+        self.assertNotIn('kmod-oaf',calls[-1])
+        self.assertNotIn('appfilter',calls[-1])
+        self.assertIn('luci-app-store',calls[-1])
+        self.assertNotIn('-a',calls[-1])
+
+    def test_failed_install_restores_feeds(self):
+        m.feeds(self.tree)
+        combined=m.read(self.tree/'feeds.conf')
+        with patch.object(m.subprocess,'run',side_effect=RuntimeError('fixture failure')):
+            with self.assertRaises(RuntimeError): m.install_feeds(self.tree)
+        self.assertEqual(m.read(self.tree/'feeds.conf'),combined)
+
 if __name__=='__main__': unittest.main()
