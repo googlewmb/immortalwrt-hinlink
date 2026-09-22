@@ -35,10 +35,6 @@ env:
   UPLOAD_BIN: 'true'
   UPLOAD_FIRMWARE: 'true'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 defaults:
   run:
     shell: bash
@@ -75,13 +71,16 @@ jobs:
     steps:
       - name: 加载项目文件
         uses: actions/checkout@v4
+
       - name: 检查构建脚本回归测试
         run: python3 -m unittest discover -s tests -v
+
       - name: 释放预装工具空间
         run: |
           # 只删除 runner 的预装 SDK，保留构建所需程序。
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h
+
       - name: 安装编译依赖
         env:
           DEBIAN_FRONTEND: noninteractive
@@ -94,6 +93,7 @@ jobs:
             libglib2.0-dev libfdt-dev device-tree-compiler dwarves qemu-utils \
             libgmp-dev libmpc-dev libmpfr-dev xsltproc libtool autoconf automake \
             autopoint pkgconf help2man zstd xz-utils subversion texinfo patch
+
       - name: 下载 ImmortalWrt 主源码并记录版本
         env:
           SOURCE_REF: ${{ inputs.source_ref || 'master' }}
@@ -104,6 +104,7 @@ jobs:
           git -C openwrt checkout --detach FETCH_HEAD
           echo "WRT_HASH=$(git -C openwrt rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "BUILD_DATE=$(date +'%Y.%m.%d-%H.%M')" >> "$GITHUB_ENV"
+
       - name: 缓存下载文件和编译对象
         uses: actions/cache@v4
         with:
@@ -114,15 +115,20 @@ jobs:
           restore-keys: |
             h6xk-v1-${{ runner.os }}-${{ matrix.device }}-${{ env.WRT_HASH }}-
             h6xk-v1-${{ runner.os }}-${{ matrix.device }}-
+
       - name: DIY1 插件、DIY2 默认设置及配置审计
         run: bash scripts/build.sh prepare
+
       - name: 下载安装包
         run: bash scripts/build.sh download
+
       - name: 编译固件
         id: compile
         run: bash scripts/build.sh compile
+
       - name: 检查并整理当前机型固件
         run: bash scripts/build.sh collect
+
       - name: 上传 bin 目录
         if: success() && env.UPLOAD_BIN == 'true'
         uses: actions/upload-artifact@v4
@@ -130,6 +136,7 @@ jobs:
           name: bin-${{ matrix.device }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openwrt/bin/
           retention-days: 7
+
       - name: 上传独立机型固件
         if: success() && env.UPLOAD_FIRMWARE == 'true'
         uses: actions/upload-artifact@v4
@@ -138,6 +145,7 @@ jobs:
           path: firmware/
           if-no-files-found: error
           retention-days: 14
+
       - name: 始终保留错误诊断
         if: always()
         uses: actions/upload-artifact@v4
@@ -150,6 +158,7 @@ jobs:
             openwrt/.config.requested
           include-hidden-files: true
           retention-days: 14
+
       - name: 查看磁盘使用情况
         if: always()
         run: df -hT
@@ -167,6 +176,7 @@ jobs:
         with:
           pattern: firmware-*
           path: artifacts
+
       - name: 按机型打包并生成说明
         run: |
           mkdir release
@@ -182,6 +192,7 @@ jobs:
           无线名称对应 H66K、H68K、H69K，默认无密码；IPv4全锥NAT、软件分载、BBRv3 默认启用。
           感谢 OpenWrt、ImmortalWrt、iStoreOS 及插件作者。
           EOF
+
       - name: 发布测试版固件
         uses: softprops/action-gh-release@v2
         with:
