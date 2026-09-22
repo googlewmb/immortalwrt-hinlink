@@ -38,6 +38,9 @@ for name in ('profiles.json','config.buildinfo','feeds.buildinfo','version.build
 for p in target.glob(f'*hinlink_opc-{board}*.manifest'):
     shutil.copy2(p,out/p.name)
 shutil.copy2(tree/'.config',out/f'{board}.config')
+project=Path(__file__).resolve().parents[1]
+shutil.copy2(project/'configs/compat.config',out/'compat-exclusions.config')
+shutil.copy2(project/'编译修复审计.md',out/'编译修复审计.md')
 logs=tree.parent/'build-logs'
 for name in ('source-revisions.txt','config-drift.txt','generated-adaptation.patch','bbr3-verification.txt'):
     if (logs/name).exists(): shutil.copy2(logs/name,out/name)

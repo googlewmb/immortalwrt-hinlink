@@ -121,6 +121,7 @@ def parse_config(text):
 def configure(tree,board):
     require(board in BOARDS,'未知机型')
     values=parse_config(read(ROOT/'configs/requested.config'))
+    values.update(parse_config(read(ROOT/'configs/compat.config')))
     # 原配置只选了 H68K；矩阵每次只选择当前机型，绝不混合三款设备树。
     values={k:v for k,v in values.items() if not k.startswith('CONFIG_TARGET_DEVICE_')}
     fixes={
@@ -139,6 +140,11 @@ def configure(tree,board):
         'CONFIG_PACKAGE_luci-ssl':'n','CONFIG_PACKAGE_luci-ssl-openssl':'y',
         'CONFIG_PACKAGE_kmod-sound-core':'y', # 用户同时选择了 USB 音频。
         'CONFIG_CCACHE':'y',
+        # 旧 ntfsprogs 已由官方 ntfs-3g-utils 提供。
+        'CONFIG_PACKAGE_ntfsprogs':'n','CONFIG_PACKAGE_ntfs-3g-utils':'y',
+        # 固件含 fwupd 的 ModemManager 插件，basic collection 被其依赖禁止。
+        'CONFIG_LIBQMI_COLLECTION_BASIC':'n',
+        'CONFIG_LIBQMI_COLLECTION_FULL':'y' if board=='h69k' else 'n',
     }
     values.update(fixes)
     # 中文说明：专属硬件片段最后生效，不再只替换目标名称。
@@ -179,7 +185,9 @@ def audit(tree):
     require(not conflicts,'发现插件重名冲突，停止构建，查看 package-conflicts.txt')
     before=parse_config(read(tree/'.config.requested'))
     after=parse_config(read(tree/'.config'))
-    changes=[f'{k}: {v} -> {after.get(k,"<不存在>")}' for k,v in before.items() if v!='n' and after.get(k)!=v]
+    # m 被依赖提升为 y 仍然满足构建请求，不应当作缺失而拦截。
+    changes=[f'{k}: {v} -> {after.get(k,"<不存在>")}' for k,v in before.items()
+             if v!='n' and after.get(k)!=v and not (v=='m' and after.get(k)=='y')]
     log=tree.parent/'build-logs'
     write(log/'config-drift.txt','# 中文说明：defconfig 移除或改变的用户选项。\n'+'\n'.join(changes)+'\n')
     if changes:
