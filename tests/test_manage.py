@@ -112,4 +112,16 @@ class GuardTests(unittest.TestCase):
             with self.assertRaises(RuntimeError): m.install_feeds(self.tree)
         self.assertEqual(m.read(self.tree/'feeds.conf'),combined)
 
+    def test_extra_device_cannot_be_ignored(self):
+        m.configure(self.tree,'h66k')
+        m.write(self.tree/'.config',m.read(self.tree/'.config')+'CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_other=y\n')
+        with patch.dict(os.environ,{'ALLOW_CONFIG_DRIFT':'true'}):
+            with self.assertRaises(SystemExit): m.audit(self.tree)
+
+    def test_conflicting_auth_cannot_be_ignored(self):
+        m.configure(self.tree,'h66k')
+        m.write(self.tree/'.config',m.read(self.tree/'.config')+'CONFIG_PACKAGE_hostapd-openssl=y\n')
+        with patch.dict(os.environ,{'ALLOW_CONFIG_DRIFT':'true'}):
+            with self.assertRaises(SystemExit): m.audit(self.tree)
+
 if __name__=='__main__': unittest.main()
