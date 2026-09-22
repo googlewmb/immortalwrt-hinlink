@@ -33,7 +33,7 @@
 
 无线驱动不等于硬件保证支持 AP 模式；仍取决于实际网卡、固件、频段及地区设置。脚本不猜测无线国家码。没有检测到无线电时，首次启动脚本不会删除，安装好网卡后重启会重试。只安装为 `m` 的包会生成安装包，不会直接放入固件，这是原配置的语义。
 
-网口沿用 iStoreOS 的分配：H66K 为 LAN `eth1` / WAN `eth0`；H68K 为 LAN `eth1 eth2 eth3` / WAN `eth0`；H69K 为 LAN `eth1 eth2` / WAN `eth0`。实际物理端口顺序需上机核对。
+网口沿用 iStoreOS 的分配：H66K 为 LAN `eth1`（检测到第三个 RTL8125 时加入 `eth2`）/ WAN `eth0`；H68K 为 LAN `eth1 eth2 eth3` / WAN `eth0`；H69K 为 LAN `eth1 eth2` / WAN `eth0`。实际物理端口顺序需上机核对。
 
 ## 专属硬件、全锥 NAT、BBR3 与 GPU
 
@@ -95,3 +95,5 @@ ubus call system board
 - [iStoreOS legacy 引导](https://github.com/istoreos/istoreos/tree/istoreos-25.12/target/linux/rockchip/image/legacy)：参考其原始内核和 DTB 加载流程，拆分后不再用 ADC/GPIO 自动识别机型。
 
 移植文件保留各自 SPDX/版权声明；原无单独许可头的文件沿用上游仓库许可，不重新声明第三方代码版权。
+
+H66K MINI/PRO/MAX 差异及核对依据见 [H66K硬件核对](H66K硬件核对.md)。
