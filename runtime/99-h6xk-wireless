@@ -1,35 +1,32 @@
 #!/bin/sh
-# 中文说明：首次启动时生成无线配置并开启可用无线电；没有无线设备时保留本脚本。
-# 每台设备生成不同密码，避免所有刷机设备使用同一个公开密码。
+# 中文说明：按用户要求开启无密码 AP，SSID 等于机型名，不加频段后缀。
 . /lib/functions.sh
+case "$(board_name)" in
+    hinlink,opc-h66k) model=H66K ;;
+    hinlink,opc-h68k) model=H68K ;;
+    hinlink,opc-h69k) model=H69K ;;
+    *) exit 1 ;;
+esac
 wifi config || exit 1
 test -s /etc/config/wireless || exit 1
-key="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)"
-test "${#key}" -eq 20 || exit 1
 found=0
 enable_radio() {
     uci set "wireless.$1.disabled=0"
-    found=1
 }
 enable_ap() {
-    local mode encryption
+    local mode
     config_get mode "$1" mode
     [ "$mode" = ap ] || return 0
-    config_get encryption "$1" encryption 'none'
-    # 保留已有的加密设置，仅为上游生成的开放 AP 设置密码。
-    if [ "$encryption" = none ]; then
-        uci set "wireless.$1.encryption=psk2"
-        uci set "wireless.$1.key=$key"
-        uci set "wireless.$1.ssid=ImmortalWrt-H6xK-$1"
-        umask 077
-        printf '无线名称：ImmortalWrt-H6xK-%s\n无线密码：%s\n' "$1" "$key" >>/root/wifi-password.txt
-    fi
+    uci set "wireless.$1.ssid=$model"
+    uci set "wireless.$1.encryption=none"
+    uci -q delete "wireless.$1.key" || :
     uci set "wireless.$1.disabled=0"
+    found=1
 }
 config_load wireless
 config_foreach enable_radio wifi-device
 config_foreach enable_ap wifi-iface
 [ "$found" = 1 ] || exit 1
 uci commit wireless
-# UCI defaults 阶段不启动网络，由系统正常启动流程加载；无线硬件必须支持 AP。
+# 一次性默认值；成功后由系统移除，不在每次启动时重置用户设置。
 exit 0

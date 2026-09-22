@@ -1,0 +1,14 @@
+#!/bin/sh
+# 中文说明：原生 firewall4 IPv4 全锥 NAT + 软件流量分载，保留 WAN 入站策略。
+. /lib/functions.sh
+configure_defaults() {
+    uci set "firewall.$1.fullcone=1"
+    uci set "firewall.$1.fullcone6=0"
+    uci set "firewall.$1.flow_offloading=1"
+    # RK3568 + PCIe 网卡没有在本工程验证的硬件 flow offload 路径。
+    uci set "firewall.$1.flow_offloading_hw=0"
+}
+config_load firewall
+config_foreach configure_defaults defaults
+uci commit firewall
+exit 0
