@@ -3,8 +3,11 @@
 from pathlib import Path
 import gzip
 import hashlib
+import json
 import shutil
+import subprocess
 import sys
+import tempfile
 
 tree, board, out = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3])
 if board not in ('h66k','h68k','h69k'):
@@ -15,10 +18,20 @@ if len(images)!=1:
     raise SystemExit(f'应找到一个 {board} squashfs 镜像，实际为 {len(images)}')
 out.mkdir(parents=True,exist_ok=True)
 for p in images:
-    # 流式检查整个 gzip，不把大镜像一次读进内存。
-    with gzip.open(p,'rb') as f:
-        while f.read(1024*1024):
-            pass
+    # sysupgrade.gz 尾部有 fwtool 元数据；先校验并提取，再检查纯 gzip。
+    # -T 输出到临时文件，不改动交付镜像；fwtool 同时验证元数据 CRC。
+    with tempfile.TemporaryDirectory(prefix='h6xk-image-') as scratch:
+        scratch=Path(scratch)
+        raw=scratch/'image.gz'
+        meta=scratch/'metadata.json'
+        with raw.open('wb') as f:
+            subprocess.run([str(tree/'staging_dir/host/bin/fwtool'),'-i',str(meta),'-T',str(p)],stdout=f,check=True)
+        metadata=json.loads(meta.read_text())
+        if metadata.get('supported_devices') != [f'hinlink,opc-{board}']:
+            raise SystemExit('镜像升级元数据与当前机型不一致')
+        with gzip.open(raw,'rb') as f:
+            while f.read(1024*1024):
+                pass
     shutil.copy2(p,out/p.name)
 for name in ('profiles.json','config.buildinfo','feeds.buildinfo','version.buildinfo'):
     if (target/name).exists(): shutil.copy2(target/name,out/name)

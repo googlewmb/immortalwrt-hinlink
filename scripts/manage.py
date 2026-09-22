@@ -48,7 +48,7 @@ def install_feeds(tree):
         write(path,combined)
     configure(tree,os.getenv('BOARD','h68k'))
     wanted=[k.removeprefix('CONFIG_PACKAGE_') for k,v in parse_config(read(tree/'.config.requested')).items()
-            if k.startswith('CONFIG_PACKAGE_') and v=='y']
+            if k.startswith('CONFIG_PACKAGE_') and v in ('y','m')]
     # 官方安装生成的元数据含核心和已安装 feed 的实际二进制包名。
     subprocess.run(['make','-s','prepare-tmpinfo'],cwd=tree,check=True)
     available=set(re.findall(r'^Package: (\S+)',read(tree/'tmp/.packageinfo'),re.M))
