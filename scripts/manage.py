@@ -46,6 +46,7 @@ def install_feeds(tree):
         subprocess.run(['./scripts/feeds','install','-a'],cwd=tree,check=True)
     finally:
         write(path,combined)
+    install_root_recipes(tree)
     configure(tree,os.getenv('BOARD','h68k'))
     wanted=[k.removeprefix('CONFIG_PACKAGE_') for k,v in parse_config(read(tree/'.config.requested')).items()
             if k.startswith('CONFIG_PACKAGE_') and v in ('y','m')]
@@ -56,6 +57,19 @@ def install_feeds(tree):
     write(tree.parent/'build-logs/third-party-requested.txt','\n'.join(missing)+'\n')
     if missing:
         subprocess.run(['./scripts/feeds','install',*missing],cwd=tree,check=True)
+
+def install_root_recipes(tree):
+    # 根目录 Makefile 无法被 feed 索引；复用已锁定提交的 checkout。
+    for feed,name in (('natmapt_luci','luci-app-natmapt'),
+                      ('natmapt_core','natmapt'),('stuntman','stuntman')):
+        source=(tree/'feeds'/feed).resolve()
+        require((source/'Makefile').is_file(),f'缺少固定版本源码：{feed}')
+        dest=tree/'package/h6xk-extra'/name
+        dest.parent.mkdir(parents=True,exist_ok=True)
+        if dest.exists() or dest.is_symlink():
+            require(dest.is_symlink() and dest.resolve()==source,f'拒绝覆盖已有 recipe：{dest}')
+        else:
+            dest.symlink_to(source,target_is_directory=True)
 
 def adapt(tree):
     image=tree/'target/linux/rockchip/image/Makefile'
@@ -147,6 +161,11 @@ def configure(tree,board):
         'CONFIG_LIBQMI_COLLECTION_FULL':'y' if board=='h69k' else 'n',
     }
     values.update(fixes)
+    if board!='h69k':
+        for option in ('LIBQMI_WITH_MBIM_QMUX','LIBQMI_WITH_QRTR_GLIB',
+                       'MODEMMANAGER_WITH_MBIM','MODEMMANAGER_WITH_NETIFD',
+                       'MODEMMANAGER_WITH_QMI','MODEMMANAGER_WITH_QRTR'):
+            values['CONFIG_'+option]='n'
     # 中文说明：专属硬件片段最后生效，不再只替换目标名称。
     values.update(parse_config(read(ROOT/'configs/devices'/f'{board}.config')))
     values.update({
