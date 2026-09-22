@@ -75,6 +75,8 @@ jobs:
     steps:
       - name: 加载项目文件
         uses: actions/checkout@v4
+      - name: 检查构建脚本回归测试
+        run: python3 -m unittest discover -s tests -v
       - name: 释放预装工具空间
         run: |
           # 只删除 runner 的预装 SDK，保留构建所需程序。
