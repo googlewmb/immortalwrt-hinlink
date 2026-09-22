@@ -12,3 +12,81 @@ src-git istore_compat_packages https://github.com/jjm2473/packages.git^c4b7a7751
 src-git natmapt_luci https://github.com/muink/luci-app-natmapt.git^c8eb57066da1e9612ea2b4057be63f015c954140
 src-git natmapt_core https://github.com/muink/openwrt-natmapt.git^60c3a8e4529c2780d6bfefc9c12e54f00f5f0e49
 src-git stuntman https://github.com/muink/openwrt-stuntman.git^f915c1e45e8ab088abd479d60d0172f176485a38
+
+# ======================================================================
+# 可选源码目录（全部保持 # 注释，不参与 feeds update/install）
+# 本节只登记来源，不修改插件源码，也不代表已验证可编译。
+# 启用前需检查同名包、依赖、分支与当前 LuCI/内核兼容性，并固定提交。
+# 单包根目录 Makefile、普通上游源码不一定能直接作为 feed；需按仓库说明接入。
+# 与上方已启用源重复的候选只作参考，不应同时启用。
+# ======================================================================
+
+# ① 独立插件源码
+
+# OpenClash
+# src-git optional_openclash https://github.com/vernesong/OpenClash.git;master
+# HomeProxy
+# src-git optional_homeproxy https://github.com/immortalwrt/homeproxy.git;master
+# SmartDNS：LuCI 界面；核心上游 https://github.com/pymumu/smartdns
+# src-git optional_smartdns https://github.com/pymumu/luci-app-smartdns.git;master
+# MosDNS（上方已有固定提交的启用源）
+# src-git optional_mosdns https://github.com/sbwml/luci-app-mosdns.git;v5
+# PassWall / PassWall2 及共享依赖
+# src-git optional_passwall https://github.com/Openwrt-Passwall/openwrt-passwall.git;main
+# src-git optional_passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git;main
+# src-git optional_passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main
+# Momo
+# src-git optional_momo https://github.com/nikkinikki-org/OpenWrt-momo.git;main
+# Nikki
+# src-git optional_nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main
+# DAED（启用时另需核对 eBPF/BTF 内核要求）
+# src-git optional_daed https://github.com/QiuSimons/luci-app-daed.git
+# Diskman
+# src-git optional_diskman https://github.com/lisaac/luci-app-diskman.git;master
+# OpenList2
+# src-git optional_openlist2 https://github.com/sbwml/luci-app-openlist2.git;main
+# qBittorrent
+# src-git optional_qbittorrent https://github.com/sbwml/luci-app-qbittorrent.git;master
+# NATMap：以下是核心上游源码，不是可直接安装的 OpenWrt feed。
+# 核心 https://github.com/heiher/natmap
+# OpenWrt 配方 https://github.com/openwrt/packages/tree/master/net/natmap
+# LuCI 界面 https://github.com/openwrt/luci/tree/master/applications/luci-app-natmap
+# NATMapT 是另一套界面/配方；原 muink/luci-app-natmap 已重定向到 natmapt。
+# src-git optional_natmapt_luci https://github.com/muink/luci-app-natmapt.git;master
+# src-git optional_natmapt_core https://github.com/muink/openwrt-natmapt.git;master
+# STUNTMAN（根目录配方；上方已有固定提交及专门接入逻辑）
+# src-git optional_stuntman https://github.com/muink/openwrt-stuntman.git;master
+# EasyTier
+# src-git optional_easytier https://github.com/EasyTier/luci-app-easytier.git;main
+# VNT
+# src-git optional_vnt https://github.com/lmq8267/luci-app-vnt.git
+# DDNS-Go
+# src-git optional_ddns_go https://github.com/sirpdboy/luci-app-ddns-go.git;main
+# NetWizard
+# src-git optional_netwizard https://github.com/sirpdboy/luci-app-netwizard.git;main
+# TimeControl
+# src-git optional_timecontrol https://github.com/sirpdboy/luci-app-timecontrol.git;main
+# QModem
+# src-git optional_qmodem https://github.com/FUjr/QModem.git;main
+# MT5700：此处登记 MT5700M 专用界面，不能据此认定支持所有 MT5700 变体。
+# src-git optional_mt5700m https://github.com/FAN789/luci-app-mt5700m.git;main
+# FM350：集合内含 fm350-modem 与 luci-proto-fm350；仅按需取包。
+# src-git optional_fm350 https://github.com/bkspc/packages.git
+
+# 各种主题：Argon / KuCat / Edge（单包仓库须核对 feed 扫描布局）
+# src-git optional_theme_argon https://github.com/jerrykuku/luci-theme-argon.git;master
+# src-git optional_theme_kucat https://github.com/sirpdboy/luci-theme-kucat.git;master
+# src-git optional_theme_edge https://github.com/kiddin9/luci-theme-edge.git;master
+# 其他 LuCI 插件：Argon 设置 / TaskPlan；更多见下方集合。
+# src-git optional_argon_config https://github.com/jerrykuku/luci-app-argon-config.git
+# src-git optional_taskplan https://github.com/sirpdboy/luci-app-taskplan.git
+
+# ② 插件源码集合
+# src-git optional_vikingyfy https://github.com/VIKINGYFY/packages.git;main
+# linkease 两个集合上方已启用固定提交，此处仅登记候选来源。
+# src-git optional_nas https://github.com/linkease/nas-packages.git;master
+# src-git optional_nas_luci https://github.com/linkease/nas-packages-luci.git;main
+# src-git optional_jjm_apps https://github.com/jjm2473/openwrt-apps.git;main
+# src-git optional_kenzok8_packages https://github.com/kenzok8/openwrt-packages.git;master
+# 用户清单中的 kenzok8/smal 对应仓库实际名为 kenzok8/small。
+# src-git optional_kenzok8_small https://github.com/kenzok8/small.git;master
