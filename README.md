@@ -24,7 +24,7 @@
 | 三款机型拆分 | 独立设备 ID、独立 DTS、独立镜像、独立构建任务 |
 | 插件源码 | `diy1.sh`，优先安装官方 feeds，第三方追加在后，不使用强制覆盖 |
 | 默认无线 | `diy2.sh` 安装首次启动脚本，开启已有无线电和 AP |
-| 无线密码 | 首次启动随机生成；通过有线 SSH 执行 `cat /root/wifi-password.txt` 查看 |
+| 无线名称/密码 | H66K、H68K、H69K；默认开放、无密码 |
 | 连接数 | `net.netfilter.nf_conntrack_max=655550` |
 | 分区 | 内核 64 MiB、rootfs 512 MiB、squashfs；体积超过限制会失败，不擅自扩容 |
 | 语言 | 保留原配置的简体中文选项 |
@@ -34,6 +34,12 @@
 无线驱动不等于硬件保证支持 AP 模式；仍取决于实际网卡、固件、频段及地区设置。脚本不猜测无线国家码。没有检测到无线电时，首次启动脚本不会删除，安装好网卡后重启会重试。只安装为 `m` 的包会生成安装包，不会直接放入固件，这是原配置的语义。
 
 网口沿用 iStoreOS 的分配：H66K 为 LAN `eth1` / WAN `eth0`；H68K 为 LAN `eth1 eth2 eth3` / WAN `eth0`；H69K 为 LAN `eth1 eth2` / WAN `eth0`。实际物理端口顺序需上机核对。
+
+## 专属硬件、全锥 NAT、BBR3 与 GPU
+
+详见 [设备配置说明](设备配置说明.md)。三款硬件差异写入 `configs/devices/`，完整配置由它们与原始需求合并生成；不是三个文件只修改目标名称。
+
+默认开启 firewall4 的 IPv4 全锥 NAT 和软件流量分载，关闭未验证的硬件分载。BBRv3 使用固定 Linux 6.18 补丁，运行时名称仍为 `bbr`；核心检查不允许被配置漂移开关绕过。GPU 默认关闭。
 
 ## 已明确修正的配置
 
@@ -75,11 +81,11 @@ BOARD=h68k JOBS=2 bash scripts/build.sh all
 ```sh
 sysctl net.netfilter.nf_conntrack_max
 uci show wireless
-cat /root/wifi-password.txt
+sysctl net.ipv4.tcp_congestion_control
 ubus call system board
 ```
 
-期望连接数输出为 `655550`。密码文件只允许 root 读取。升级时保留旧配置可能保留旧的无线设置，首次默认值不会强制覆盖用户已有密码。
+期望连接数输出为 `655550`。无线初始化脚本只执行一次，会按本次要求将 AP 设置为机型名称、无密码；后续可以自行修改。升级首次执行也会应用这些新默认值。
 
 ## 上游依据和许可
 
