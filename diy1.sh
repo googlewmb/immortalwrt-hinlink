@@ -6,4 +6,4 @@ test -f include/toplevel.mk || { echo '请在 ImmortalWrt 源码根目录运行'
 python3 "$ROOT/scripts/manage.py" feeds "$PWD"
 # feeds install 不使用 -f，官方仓库已有的 Passwall/OpenClash 直接使用官方版本。
 ./scripts/feeds update -a
-./scripts/feeds install -a
+python3 "$ROOT/scripts/manage.py" install_feeds "$PWD"
