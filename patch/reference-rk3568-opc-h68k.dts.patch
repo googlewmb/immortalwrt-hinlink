@@ -1,0 +1,17 @@
+说明：保留硬件供电、网口、存储、风扇；去除未移植的厂商加速依赖。
+--- a/rk3568-opc-h68k.dts
++++ b/rk3568-opc-h68k.dts
+@@ -1,3 +1,4 @@
++/* 中文说明：来自 iStoreOS 25.12 的设备树；三款设备分别编译。 */
+ // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+ /*
+  * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
+@@ -8,7 +9,7 @@
+ #include "rk3568-hinlink.dtsi"
+ 
+ / {
+-	model = "HINLINK OPC-H68K/H69K Board";
++	model = "HINLINK OPC-H68K Board";
+ 	compatible = "hinlink,opc-h68k", "rockchip,rk3568";
+ 
+ 	aliases {
