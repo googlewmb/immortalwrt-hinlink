@@ -4,7 +4,17 @@
 . /lib/functions/uci-defaults.sh
 board_config_update
 case "$(board_name)" in
-  hinlink,opc-h66k) ucidef_set_interfaces_lan_wan 'eth1' 'eth0' ;;
+  hinlink,opc-h66k)
+    # 中文说明：MINI/PRO 两口；MAX 三口。保持 eth0 为 WAN。
+    # 只接纳确认为 RTL8125 PCIe 以太网的 eth2，不能误把 USB/蜂窝设备桥接进 LAN。
+    lan='eth1'
+    if [ "$(cat /sys/class/net/eth2/device/vendor 2>/dev/null)" = 0x10ec ] &&
+       [ "$(cat /sys/class/net/eth2/device/device 2>/dev/null)" = 0x8125 ] &&
+       [ "$(cat /sys/class/net/eth2/device/class 2>/dev/null)" = 0x020000 ]; then
+      lan='eth1 eth2'
+    fi
+    ucidef_set_interfaces_lan_wan "$lan" 'eth0'
+    ;;
   hinlink,opc-h68k) ucidef_set_interfaces_lan_wan 'eth1 eth2 eth3' 'eth0' ;;
   hinlink,opc-h69k) ucidef_set_interfaces_lan_wan 'eth1 eth2' 'eth0' ;;
 esac
