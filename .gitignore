@@ -1,0 +1,7 @@
+# 中文说明：构建缓存和固件不提交到源码仓库。
+openwrt/
+work/
+build-logs/
+firmware/
+__pycache__/
+*.pyc

@@ -1,0 +1,4 @@
+# 中文说明：确保在 Windows 上传后仍使用 Linux 换行。
+* text=auto eol=lf
+*.png binary
+*.gz binary
