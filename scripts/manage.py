@@ -186,11 +186,20 @@ def audit(tree):
         print('\n'.join(changes),flush=True)
     # 硬性要求始终检查，不能用允许配置漂移选项绕过。
     required=['CONFIG_TARGET_rockchip','CONFIG_TARGET_rockchip_armv8','CONFIG_TARGET_ROOTFS_SQUASHFS',
+        'CONFIG_PACKAGE_kmod-r8125','CONFIG_PACKAGE_kmod-mt7915e',
         'CONFIG_PACKAGE_kmod-mt7916-firmware','CONFIG_PACKAGE_kmod-mt7921e','CONFIG_PACKAGE_kmod-mt7921u',
         'CONFIG_PACKAGE_kmod-mt7922-firmware','CONFIG_PACKAGE_wpad-openssl',
         'CONFIG_PACKAGE_firewall4','CONFIG_PACKAGE_kmod-nft-fullcone',
         'CONFIG_PACKAGE_kmod-nft-offload','CONFIG_PACKAGE_kmod-tcp-bbr','CONFIG_PACKAGE_kmod-sched']
     required += [k for k,v in before.items() if k.startswith('CONFIG_TARGET_DEVICE_') and v=='y']
+    selected={k for k,v in after.items() if k.startswith('CONFIG_TARGET_DEVICE_') and v=='y'}
+    expected={k for k,v in before.items() if k.startswith('CONFIG_TARGET_DEVICE_') and v=='y'}
+    require(len(expected)==1 and selected==expected,'目标机型数量或型号变化，禁止生成混合固件')
+    forbidden=['kmod-r8126','kmod-r8168','kmod-drm-panfrost','kmod-rkgpu-bifrost',
+               'hostapd-openssl','wpa-supplicant-openssl','wpad-basic-mbedtls',
+               'wpad-basic-openssl','wpad-basic-wolfssl']
+    require(not any(after.get('CONFIG_PACKAGE_'+name) in ('y','m') for name in forbidden),
+            '禁用的硬件驱动或冲突无线认证组件被重新启用')
     require(all(after.get(k)=='y' for k in required),'设备或无线必要配置丢失，停止构建，查看 config-drift.txt')
     require(after.get('CONFIG_TARGET_KERNEL_PARTSIZE')=='64' and after.get('CONFIG_TARGET_ROOTFS_PARTSIZE')=='512','分区大小发生变化')
     if changes:
