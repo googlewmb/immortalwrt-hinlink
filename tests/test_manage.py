@@ -21,6 +21,8 @@ class GuardTests(unittest.TestCase):
         m.write(self.tree/'package/boot/uboot-rockchip/Makefile','define U-Boot/rk3568/Default\nendef\nUBOOT_TARGETS := test\n$(eval $(call BuildPackage/U-Boot))\n')
         m.write(self.tree/'feeds.conf.default','src-git packages https://example.test/packages\n')
         m.write(self.tree/'tmp/.packageinfo','Source-Makefile: package/test/Makefile\nPackage: test\n')
+        for feed in ('natmapt_luci','natmapt_core','stuntman'):
+            m.write(self.tree/'feeds'/feed/'Makefile','include $(TOPDIR)/rules.mk\n')
 
     def test_split(self):
         for b in m.BOARDS:
@@ -51,6 +53,19 @@ class GuardTests(unittest.TestCase):
             for name in ('kmod-nft-fullcone','kmod-nft-offload','kmod-tcp-bbr','kmod-sched'):
                 self.assertEqual(c['CONFIG_PACKAGE_'+name],'y')
             self.assertEqual(c['CONFIG_PACKAGE_kmod-r8126'],'n')
+            for name in ('LIBQMI_WITH_MBIM_QMUX','MODEMMANAGER_WITH_QMI'):
+                self.assertEqual(c['CONFIG_'+name],'y' if b=='h69k' else 'n')
+
+    def test_root_recipes_are_scannable_and_idempotent(self):
+        m.install_root_recipes(self.tree)
+        m.install_root_recipes(self.tree)
+        recipe=self.tree/'package/h6xk-extra/natmapt/Makefile'
+        self.assertTrue(recipe.is_file())
+        self.assertEqual(recipe.resolve(),(self.tree/'feeds/natmapt_core/Makefile').resolve())
+
+    def test_root_recipes_refuse_unrelated_directory(self):
+        m.write(self.tree/'package/h6xk-extra/natmapt/Makefile','user content')
+        with self.assertRaises(SystemExit): m.install_root_recipes(self.tree)
 
     def test_fullcone_cannot_be_ignored(self):
         m.configure(self.tree,'h69k')
