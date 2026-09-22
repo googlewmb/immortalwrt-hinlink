@@ -1,0 +1,4 @@
+/* 中文说明：iStoreOS 通用 RK3568 引导设备树。 */
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+
+#include "rk3568-u-boot.dtsi"
