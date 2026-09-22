@@ -177,7 +177,7 @@ jobs:
           主源码为 ImmortalWrt，设备树与引导配置参考 iStoreOS 25.12。
           此发布仅表示 CI 构建及镜像压缩校验通过，尚未代表实机启动验证。
           每包包含配置、源码版本、配置差异报告和 SHA256 校验值。
-          无线密码首次启动随机生成，通过有线 SSH 查看 /root/wifi-password.txt。
+          无线名称对应 H66K、H68K、H69K，默认无密码；IPv4全锥NAT、软件分载、BBRv3 默认启用。
           感谢 OpenWrt、ImmortalWrt、iStoreOS 及插件作者。
           EOF
       - name: 发布测试版固件
