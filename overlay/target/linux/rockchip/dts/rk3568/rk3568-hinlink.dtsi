@@ -188,7 +188,8 @@
 &gpu {
 	power-off-delay-ms = <200>;
 	mali-supply = <&vdd_gpu>;
-	status = "okay";
+	/* 中文说明：路由用途默认关闭 GPU；CPU/NAT/BBR 不依赖 GPU。 */
+	status = "disabled";
 };
 
 &hdmi {
