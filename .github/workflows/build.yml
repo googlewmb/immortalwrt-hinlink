@@ -111,7 +111,7 @@ jobs:
           path: |
             openwrt/dl
             openwrt/.ccache
-          key: h6xk-v1-${{ runner.os }}-${{ matrix.device }}-${{ env.WRT_HASH }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: h6xk-v1-${{ runner.os }}-${{ matrix.device }}-${{ env.WRT_HASH }}
           restore-keys: |
             h6xk-v1-${{ runner.os }}-${{ matrix.device }}-${{ env.WRT_HASH }}-
             h6xk-v1-${{ runner.os }}-${{ matrix.device }}-
@@ -166,7 +166,9 @@ jobs:
   release:
     # 只有本次选中的所有机型均成功时才发布。
     needs: [select, build]
-    if: github.event_name == 'schedule' || inputs.upload_release
+    if: |
+      needs.build.result == 'success' &&
+      (github.event_name == 'schedule' || inputs.upload_release == true)
     runs-on: ubuntu-24.04
     permissions:
       contents: write
