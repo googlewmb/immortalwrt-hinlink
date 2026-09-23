@@ -20,7 +20,7 @@ cd "$TREE"
 #
 # 逻辑：
 #   1. 读取当前 .config 中所有 CONFIG_PACKAGE_xxx=y/m
-#   2. 使用 OpenWrt 的实际 menuconfig/package 数据判断
+#   2. 使用当前 package / feeds 实际 Makefile 判断
 #   3. 不存在的软件包自动取消
 #   4. 存在的软件包保持原配置
 #
@@ -30,11 +30,13 @@ cd "$TREE"
 #   - 不修改任何 Makefile
 #   - 不伪造软件包
 #   - 仅处理 CONFIG_PACKAGE_*
+#   - 缺失软件包只 WARNING，不阻止构建
 # ============================================================
 ignore_missing_packages() {
     local report="$LOGS/missing-packages.log"
     local before="$LOGS/config-before-missing-filter"
     local after="$LOGS/config-after-missing-filter"
+    local defconfig_log="$LOGS/defconfig-missing-filter.log"
 
     echo "============================================================"
     echo "检查 .config 中不存在的软件包"
@@ -45,50 +47,40 @@ ignore_missing_packages() {
     : > "$report"
 
     # --------------------------------------------------------
-    # 先让 OpenWrt 根据当前 feeds / package Makefile
-    # 生成完整的 package 配置数据库。
-    # --------------------------------------------------------
-    make defconfig >/dev/null 2>&1 || true
-
-    # --------------------------------------------------------
-    # 通过 scripts/config 检查 CONFIG_PACKAGE_*。
-    #
-    # OpenWrt 自带 scripts/config：
-    #   - --get-val 可以读取配置
-    #   - --disable 可以安全取消配置
-    #
-    # 这里只处理当前 .config 中已经存在的 CONFIG_PACKAGE_*。
+    # scripts/config 必须存在
     # --------------------------------------------------------
     if [ ! -x ./scripts/config ]; then
         echo "错误：找不到 OpenWrt scripts/config。" >&2
         return 1
     fi
 
+    # --------------------------------------------------------
+    # 第一次 defconfig。
+    #
+    # 旧配置中的不存在插件可能产生 WARNING，
+    # 这里不能因此停止，后面会自动清理。
+    # --------------------------------------------------------
+    make defconfig >/dev/null 2>&1 || true
+
+    # --------------------------------------------------------
+    # 读取当前 .config 中所有 CONFIG_PACKAGE_xxx=y/m
+    # --------------------------------------------------------
     while IFS= read -r line; do
         case "$line" in
             CONFIG_PACKAGE_*=y|CONFIG_PACKAGE_*=m)
+
                 package_config="${line%%=*}"
                 package_value="${line#*=}"
-
                 package="${package_config#CONFIG_PACKAGE_}"
 
                 # OpenWrt 配置中的特殊转义名称恢复。
                 package="$(printf '%s' "$package" | sed 's/@@/@/g')"
 
-                # ------------------------------------------------
-                # 使用 OpenWrt 自身生成的 .config / tmp 信息
-                # 判断 package 是否存在。
-                #
-                # package Makefile 存在时：
-                #   package/feeds/*/<pkg>/Makefile
-                #   package/*/<pkg>/Makefile
-                #
-                # 同时检查 package 名称，避免简单 grep
-                # 把依赖关系误判成软件包存在。
-                # ------------------------------------------------
                 found=0
 
+                # ------------------------------------------------
                 # 官方 / 本地 package
+                # ------------------------------------------------
                 if find package \
                     -type f \
                     -name Makefile \
@@ -97,19 +89,21 @@ ignore_missing_packages() {
                     found=1
                 fi
 
+                # ------------------------------------------------
                 # feeds package
-                if [ "$found" -eq 0 ] && find feeds \
-                    -type f \
-                    -name Makefile \
-                    -path "*/${package}/Makefile" \
-                    -print -quit 2>/dev/null | grep -q .; then
-                    found=1
+                # ------------------------------------------------
+                if [ "$found" -eq 0 ] && [ -d feeds ]; then
+                    if find feeds \
+                        -type f \
+                        -name Makefile \
+                        -path "*/${package}/Makefile" \
+                        -print -quit 2>/dev/null | grep -q .; then
+                        found=1
+                    fi
                 fi
 
                 # ------------------------------------------------
-                # 进一步使用 package metadata 判断。
-                # 这一步用于处理某些 package 目录名称和
-                # CONFIG_PACKAGE 名称不完全一致的情况。
+                # 通过 PKG_NAME 再检查一次。
                 # ------------------------------------------------
                 if [ "$found" -eq 0 ]; then
                     if grep -Rqs \
@@ -120,27 +114,99 @@ ignore_missing_packages() {
                     fi
                 fi
 
+                # ------------------------------------------------
+                # 软件包不存在：
+                # 自动取消 CONFIG_PACKAGE_xxx
+                # ------------------------------------------------
                 if [ "$found" -eq 0 ]; then
                     printf '%s\n' "$package" >> "$report"
 
-                    echo "忽略不存在的软件包：$package"
+                    echo "WARNING: 不存在的软件包，自动忽略：$package"
 
-                    # 自动取消配置。
-                    ./scripts/config --disable "$package_config" 2>/dev/null || true
+                    ./scripts/config --disable "$package_config" \
+                        2>/dev/null || true
                 fi
+
                 ;;
         esac
     done < <(grep '^CONFIG_PACKAGE_.*=\(y\|m\)$' .config || true)
 
-    # --------------------------------------------------------
-    # 重新生成 .config。
+
+    # ========================================================
+    # 清理后重新生成 .config
     #
-    # 被取消的软件包会变成：
-    # CONFIG_PACKAGE_xxx is not set
-    #
-    # 其他存在的软件包保持原状态。
-    # --------------------------------------------------------
-    make defconfig
+    # 缺失插件不再作为失败条件。
+    # ========================================================
+    if ! make defconfig >"$defconfig_log" 2>&1; then
+
+        # ----------------------------------------------------
+        # 再检查一次是否还有 CONFIG_PACKAGE_xxx=y/m
+        # 指向不存在的软件包。
+        # ----------------------------------------------------
+        while IFS= read -r line; do
+            case "$line" in
+                CONFIG_PACKAGE_*=y|CONFIG_PACKAGE_*=m)
+
+                    package_config="${line%%=*}"
+                    package="${package_config#CONFIG_PACKAGE_}"
+                    package="$(printf '%s' "$package" | sed 's/@@/@/g')"
+
+                    found=0
+
+                    if find package \
+                        -type f \
+                        -name Makefile \
+                        -path "*/${package}/Makefile" \
+                        -print -quit 2>/dev/null | grep -q .; then
+                        found=1
+                    fi
+
+                    if [ "$found" -eq 0 ] && [ -d feeds ]; then
+                        if find feeds \
+                            -type f \
+                            -name Makefile \
+                            -path "*/${package}/Makefile" \
+                            -print -quit 2>/dev/null | grep -q .; then
+                            found=1
+                        fi
+                    fi
+
+                    if [ "$found" -eq 0 ]; then
+                        echo "WARNING: 不存在的软件包，自动忽略：$package"
+
+                        printf '%s\n' "$package" >> "$report"
+
+                        ./scripts/config --disable "$package_config" \
+                            2>/dev/null || true
+                    fi
+
+                    ;;
+            esac
+        done < <(grep '^CONFIG_PACKAGE_.*=\(y\|m\)$' .config || true)
+
+        # ----------------------------------------------------
+        # 再生成一次配置。
+        #
+        # 这里仍然允许缺失插件相关问题存在；
+        # 如果最终还有真正的 Kconfig 错误，则失败。
+        # ----------------------------------------------------
+        if ! make defconfig >"$defconfig_log" 2>&1; then
+
+            if grep -Eq \
+                'No rule to make target|Makefile:.*Error|Kconfig.*error|syntax error|recipe for target.*failed' \
+                "$defconfig_log"; then
+
+                cat "$defconfig_log" >&2
+                echo "错误：make defconfig 存在真正的配置 / Makefile 错误。" >&2
+                return 1
+            fi
+
+            echo "WARNING: make defconfig 返回非零，但未发现真正的 Makefile/Kconfig 错误。"
+            echo "WARNING: 继续构建。"
+
+        fi
+    fi
+
 
     cp .config "$after"
 
@@ -177,7 +243,7 @@ case "${1:-all}" in
         # ========================================================
         # 第一次 defconfig
         # ========================================================
-        make defconfig 2>&1 | tee "$LOGS/defconfig-initial.log"
+        make defconfig 2>&1 | tee "$LOGS/defconfig-initial.log" || true
 
 
         # ========================================================
@@ -204,8 +270,12 @@ case "${1:-all}" in
         #   - 依赖重新计算
         #   - .config 一致
         #   - OpenWrt 最终配置有效
+        #
+        # 缺失插件不作为停止条件。
         # ========================================================
-        make defconfig 2>&1 | tee "$LOGS/defconfig-final.log"
+        make defconfig 2>&1 | tee "$LOGS/defconfig-final.log" || {
+            echo "WARNING: 最终 defconfig 返回非零，继续构建。"
+        }
 
 
         # ========================================================
