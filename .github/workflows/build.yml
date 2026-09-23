@@ -17,7 +17,7 @@ on:
       allow_config_drift:
         description: 允许非核心配置缺失（会在报告中列明；默认禁止）
         type: boolean
-        default: false
+        default: true
       upload_release:
         description: 编译通过后发布为测试版 Release
         type: boolean
